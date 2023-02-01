@@ -15,8 +15,10 @@ class SlackBot:
         self.__calendar = GoogleCalendarParser()
 
     def check_schedule(self):
-        event = self.__calendar.get_event()
-        if event is not None:
+        events = self.__calendar.get_events()
+        if events is None:
+            return
+        for event in events:
             self.__send_message(event)
 
     def __get_message(self, event):
@@ -29,10 +31,12 @@ class SlackBot:
         mention = self.__get_mention(slack_id)
         if self.__is_qa_tech_check(email):
             summary = self.__try_format_summary(summary)
+            print("Sent message about QA/TechCheck")
             return (
                 f"<!here>\n"
                 f"{summary} will be from {start_time} to {end_time}"
             )
+        print("Sent message about mentor")
         return (
             f"{name} is <!here> from {start_time} to {end_time}\n"
             f"Mentor {mention} will answer your questions and check your homeworks"
