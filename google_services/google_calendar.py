@@ -4,13 +4,13 @@ import datetime
 from pathlib import Path
 from typing import Union
 
-import pytz
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from helpers.datetime_helper import DateTimeHelper
 from slack_bot.settings import SCOPES, CALENDAR_ID, STAFF_INFO, BASE_DIR
 
 
@@ -18,8 +18,8 @@ class GoogleCalendarParser:
     """
     Parses event from Google calendar by now
     """
-    __ukraine_tz = pytz.timezone("Etc/GMT-2")
     __creds = None
+    __datetime_helper = DateTimeHelper
     __token_path: Path = BASE_DIR.joinpath("token.json")
     __creds_path: Path = BASE_DIR.joinpath("credentials.json")
 
@@ -58,9 +58,7 @@ class GoogleCalendarParser:
 
     def __get_events_from_google_calendar(self) -> Union[dict, None]:
         try:
-            now = datetime.datetime.now(self.__ukraine_tz)
             now_iso = datetime.datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
-            print(f'Getting upcoming event at {now.strftime("%Y-%m-%d %H:%M")}')
             # Call the Calendar API
             event_result = self.__service.events().list(
                 calendarId=CALENDAR_ID,
@@ -81,16 +79,20 @@ class GoogleCalendarParser:
     def get_events(self) -> Union[list, None]:
         events_list = list()
         events = self.__get_events_from_google_calendar()
-        current_time = self.__get_current_time_str()
+        current_time = self.__datetime_helper.get_current_time_str_hour_minute()
         for event in events:
             staff_email = event.get("creator").get("email")
-            start_time = self.__normalize_datetime(event.get('start').get('dateTime'))
+            start_time = self.__datetime_helper.normalize_datetime(
+                event.get('start').get('dateTime')
+            )
             if start_time != current_time:
                 continue
             if staff_email not in STAFF_INFO:
                 print(f"{staff_email} is not staff email")
                 continue
-            end_time = self.__normalize_datetime(event.get('end').get('dateTime'))
+            end_time = self.__datetime_helper.normalize_datetime(
+                event.get('end').get('dateTime')
+            )
             staff_name = STAFF_INFO.get(staff_email).get("name")
             staff_slack_id = STAFF_INFO.get(staff_email).get("slack_id")
             event_summary = event.get("summary")
@@ -104,16 +106,7 @@ class GoogleCalendarParser:
             }
             events_list.append(event_item)
         if not events_list:
-            print(f"No events at {current_time}")
+            time_usual_look = self.__datetime_helper.get_current_time_usual_look()
+            print(f"No events at {time_usual_look}")
             return
         return events_list
-
-    def __get_current_time_str(self) -> str:
-        time_now = datetime.datetime.now(self.__ukraine_tz)
-        return time_now.strftime("%H:%M")
-
-    @staticmethod
-    def __normalize_datetime(time: str) -> str:
-        time_normalized = datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S%z")
-        time_formatted = time_normalized.strftime("%H:%M")
-        return time_formatted
