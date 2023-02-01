@@ -1,0 +1,6 @@
+.env
+venv
+credentials.json
+token.json
+staff_info.json
+.idea
