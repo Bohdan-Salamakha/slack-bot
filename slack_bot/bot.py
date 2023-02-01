@@ -31,12 +31,12 @@ class SlackBot:
         mention = self.__get_mention(slack_id)
         if self.__is_qa_tech_check(email):
             summary = self.__try_format_summary(summary)
-            print("Sent message about QA/TechCheck")
+            print(f"Sent message about special {summary}")
             return (
                 f"<!here>\n"
                 f"{summary} will be from {start_time} to {end_time}"
             )
-        print("Sent message about mentor")
+        print(f"Sent message about {name} work hours")
         return (
             f"{name} is <!here> from {start_time} to {end_time}\n"
             f"Mentor {mention} will answer your questions and check your homeworks"
